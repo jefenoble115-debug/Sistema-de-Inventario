@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Inventarios - Conteo</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #121214; color: #e1e1e6; padding: 30px; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #29292e; padding-bottom: 20px; }
+        h1 { color: #04d361; margin: 0; }
+        .logout-btn { padding: 10px 15px; background-color: #ff3344; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        
+        .menu { margin-top: 20px; }
+        .menu button {
+            padding: 10px 15px;
+            margin-right: 10px;
+            background-color: #3b3b4f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .menu button:hover { background-color: #04d361; color: #121214; }
+
+        .form-section { background-color: #202024; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #29292e; }
+        .form-section h3 { color: #04d361; margin-top: 0; }
+        .form-group { display: inline-block; margin-right: 15px; margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: #a8a8b3; }
+        input, select { padding: 8px; background-color: #121214; border: 1px solid #29292e; border-radius: 4px; color: white; }
+        .btn-action { padding: 9px 15px; background-color: #04d361; color: #121214; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-action:hover { background-color: #06b956; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; background-color: #202024; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #29292e; }
+        th { background-color: #29292e; color: #04d361; }
+        .badge { background-color: #122a18; color: #04d361; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        .refresh-btn { margin-top: 15px; padding: 8px 12px; background-color: #3b3b4f; color: white; border: none; border-radius: 4px; cursor: pointer; }
+
+        .seccion { display: none; }
+        .seccion.activa { display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Conteo de Inventario</h1>
+        <div>
+            <span id="user-display" style="margin-right: 20px; font-weight: bold;"></span>
+            <button class="logout-btn" onclick="cerrarSesion()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button id="btn-agregar" onclick="mostrarSeccion('seccion-agregar'); mostrarStockSistema();">Agregar Productos</button>
+        <button id="btn-ingresar" onclick="mostrarSeccion('seccion-ingresar'); mostrarStockSistema();">Ingresar Productos</button>
+        <button id="btn-movimientos" onclick="mostrarSeccion('seccion-movimientos'); cargarMovimientos(); mostrarStockSistema();">Ver Movimientos</button>
+        <button id="btn-inventario" onclick="mostrarSeccion('seccion-inventario'); ocultarStockSistema();">Hacer Inventario</button>
+        <button id="btn-ver-inventarios" onclick="mostrarSeccion('seccion-ver-inventarios'); cargarInventarios(); mostrarStockSistema();">Ver Inventarios</button>
+        <button id="btn-usuarios" onclick="mostrarSeccion('seccion-usuarios'); cargarUsuarios(); mostrarStockSistema();">Usuarios</button>
+    </div>
+
+    <!-- SECCIÓN: AGREGAR PRODUCTOS -->
+    <div id="seccion-agregar" class="form-section seccion">
+        <h3>Agregar Nuevo Producto</h3>
+
+        <form id="producto-form" onsubmit="agregarProducto(event)">
+            <div class="form-group">
+                <label for="codigo-barras">Código de Barras:</label>
+                <input type="text" id="codigo-barras" required placeholder="Minimo 8 digitos">
+            </div>
+
+            <div class="form-group">
+                <label for="nombre-producto">Nombre:</label>
+                <input type="text" id="nombre-producto" required placeholder="Ej. Coca Cola 600ml">
+            </div>
+
+            <div class="form-group">
+                <label for="descripcion-producto">Descripción:</label>
+                <input type="text" id="descripcion-producto" placeholder="Descripción del producto" size="30">
+            </div>
+
+            <button type="submit" class="btn-action">Guardar Producto</button>
+        </form>
+    </div>
+
+    <!-- SECCIÓN: INGRESAR PRODUCTOS -->
+    <div id="seccion-ingresar" class="form-section seccion activa">
+        <h3>Ingresar Productos al Stock</h3>
+
+        <form id="movimiento-form" onsubmit="registrarMovimiento(event)">
+            <div class="form-group">
+                <label for="prod-id">ID Producto:</label>
+                <input type="number" id="prod-id" required placeholder="Ej. 1" min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="cantidad">Cantidad:</label>
+                <input type="number" id="cantidad" required placeholder="Ej. 10" min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="obs">Observaciones:</label>
+                <input type="text" id="obs" placeholder="Entrada desde panel web" size="30">
+            </div>
+
+            <button type="submit" class="btn-action">Ingresar al Stock</button>
+        </form>
+    </div>
+
+    <!-- SECCIÓN: VER MOVIMIENTOS -->
+    <div id="seccion-movimientos" class="form-section seccion">
+        <h3>Historial de Movimientos</h3>
+
+        <button class="refresh-btn" onclick="cargarMovimientos()">🔄 Actualizar Movimientos</button>
+
+        <table id="tabla-movimientos">
+            <thead>
+                <tr>
+                    <th>ID Movimiento</th>
+                    <th>ID Producto</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Fecha</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- SECCIÓN: HACER INVENTARIO -->
+    <div id="seccion-inventario" class="form-section seccion">
+        <h3>Hacer Inventario Físico</h3>
+
+        <form id="inventario-form" onsubmit="registrarInventario(event)">
+            <div class="form-group">
+                <label for="inv-prod-id">ID Producto:</label>
+                <input type="number" id="inv-prod-id" required placeholder="Ej. 1" min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="cantidad-fisica">Cantidad Física:</label>
+                <input type="number" id="cantidad-fisica" required placeholder="Ej. 25" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="responsable">Responsable:</label>
+                <input type="text" id="responsable" required placeholder="Nombre del responsable">
+            </div>
+
+            <button type="submit" class="btn-action">Guardar Conteo</button>
+        </form>
+    </div>
+
+    <button class="refresh-btn" onclick="cargarInventario()">🔄 Actualizar Tabla</button>
+
+    <table id="tabla-productos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Código de Barras</th>
+                <th>Nombre Artículo</th>
+                <th>Descripción</th>
+                <th class="col-stock">Stock en Sistema PostgreSQL</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+<!-- SECCIÓN: VER INVENTARIO -->
+    <div id="seccion-ver-inventarios" class="form-section seccion">
+    <h3>Inventarios Registrados</h3>
+
+    <button class="refresh-btn" onclick="cargarInventarios()">🔄 Actualizar Inventarios</button>
+
+    <table id="tabla-inventarios">
+        <thead>
+            <tr>
+                <th>ID Inventario</th>
+                <th>Fecha</th>
+                <th>Responsable</th>
+                <th>ID Producto</th>
+                <th>Nombre Producto</th>
+                <th>Cantidad Física</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- SECCIÓN: Usuarios -->
+    
+    <div id="seccion-usuarios" class="form-section seccion">
+    <h3>Dar de Alta Usuario</h3>
+
+    <form id="usuario-form" onsubmit="registrarUsuario(event)">
+        <div class="form-group">
+            <label for="nuevo-username">Usuario:</label>
+            <input type="text" id="nuevo-username" required placeholder="Ej. operador1">
+        </div>
+
+        <div class="form-group">
+            <label for="nuevo-email">Email:</label>
+            <input type="email" id="nuevo-email" required placeholder="Ej. operador@email.com">
+        </div>
+
+        <div class="form-group">
+            <label for="nuevo-password">Contraseña:</label>
+            <input type="password" id="nuevo-password" required placeholder="Contraseña">
+        </div>
+
+        <div class="form-group">
+            <label for="nuevo-rol">Rol:</label>
+            <select id="nuevo-rol" required>
+                <option value="OPERADOR">OPERADOR</option>
+                <option value="AUDITOR">AUDITOR</option>
+                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-action">Guardar Usuario</button>
+    </form>
+
+    <button class="refresh-btn" onclick="cargarUsuarios()">🔄 Actualizar Usuarios</button>
+
+    <table id="tabla-usuarios">
+        <thead>
+            <tr>
+                <th>ID Usuario</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Activo</th>
+                <th>Fecha Creación</th>
+                <th>Último Acceso</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+
+        // Proteger la página: si no hay sesión iniciada, patear al login
+        const usuarioLogueado = localStorage.getItem("sesion_usuario");
+        const rolLogueado = localStorage.getItem("sesion_rol");
+
+        if (!usuarioLogueado) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById("user-display").innerText = `Usuario: ${usuarioLogueado} | Rol: ${rolLogueado}`;
+        }
+
+        function mostrarSeccion(idSeccion) {
+            const secciones = document.querySelectorAll(".seccion");
+
+            secciones.forEach(seccion => {
+                seccion.classList.remove("activa");
+            });
+
+            document.getElementById(idSeccion).classList.add("activa");
+        }
+
+
+        function aplicarPermisosPorRol() {
+            const rol = localStorage.getItem("sesion_rol");
+
+            const btnAgregar = document.getElementById("btn-agregar");
+            const btnIngresar = document.getElementById("btn-ingresar");
+            const btnMovimientos = document.getElementById("btn-movimientos");
+            const btnInventario = document.getElementById("btn-inventario");
+            const btnVerInventarios = document.getElementById("btn-ver-inventarios");
+            const btnUsuarios = document.getElementById("btn-usuarios");
+
+    // Ocultar todos primero
+            btnAgregar.style.display = "none";
+            btnIngresar.style.display = "none";
+            btnMovimientos.style.display = "none";
+            btnInventario.style.display = "none";
+            btnVerInventarios.style.display = "none";
+            btnUsuarios.style.display = "none";
+
+            if (rol === "ADMINISTRADOR") {
+                btnAgregar.style.display = "inline-block";
+                btnIngresar.style.display = "inline-block";
+                btnMovimientos.style.display = "inline-block";
+                btnVerInventarios.style.display = "inline-block";
+                btnUsuarios.style.display = "inline-block";
+
+                mostrarSeccion("seccion-ingresar");
+                mostrarStockSistema();
+            }
+
+            else if (rol === "OPERADOR") {
+                btnInventario.style.display = "inline-block";
+                btnVerInventarios.style.display = "inline-block";
+
+                mostrarSeccion("seccion-inventario");
+                ocultarStockSistema();
+            }
+
+            else if (rol === "AUDITOR") {
+                btnMovimientos.style.display = "inline-block";
+                btnVerInventarios.style.display = "inline-block";
+
+                mostrarSeccion("seccion-movimientos");
+                cargarMovimientos();
+                mostrarStockSistema();
+            }
+
+            else {
+                alert("Rol no reconocido. Cerrando sesión.");
+                cerrarSesion();
+            }
+        }
+
+        function ocultarStockSistema() {
+            const columnasStock = document.querySelectorAll(".col-stock");
+
+            columnasStock.forEach(columna => {
+                columna.style.display = "none";
+            });
+        }
+
+        function mostrarStockSistema() {
+            const columnasStock = document.querySelectorAll(".col-stock");
+
+            columnasStock.forEach(columna => {
+            columna.style.display = "";
+            });
+        }
+
+        // Consultar el Stock en tiempo real desde FastAPI
+        async function cargarInventario() {
+            try {
+                const respuesta = await fetch(`${API_URL}/productos`);
+                const productos = await respuesta.json();
+                
+                const tbody = document.querySelector("#tabla-productos tbody");
+                tbody.innerHTML = "";
+
+                productos.forEach(prod => {
+                    const fila = document.createElement("tr");
+
+                    fila.innerHTML = `
+                        <td>${prod.id_producto}</td>
+                        <td><code>${prod.codigo_barras}</code></td>
+                        <td>${prod.nombre}</td>
+                        <td>${prod.descripcion || "Sin descripción"}</td>
+                        <td class="col-stock"><span class="badge">${prod.stock_sistema} u.</span></td>
+                    `;
+
+                    tbody.appendChild(fila);
+                });
+                // Si la sección activa es Hacer Inventario, ocultar la columna stock
+                const seccionInventarioActiva = document
+                    .getElementById("seccion-inventario")
+                    .classList.contains("activa");
+
+                if (seccionInventarioActiva) {
+                    ocultarStockSistema();
+                } else {
+                    mostrarStockSistema();
+                }
+
+            } catch (err) {
+                console.error("Error al cargar productos de la API:", err);
+                alert("No se pudieron cargar los productos.");
+            }
+        }
+
+        // Agregar productos nuevos
+        async function agregarProducto(event) {
+            event.preventDefault();
+
+            const codigoBarras = document.getElementById("codigo-barras").value;
+            const nombre = document.getElementById("nombre-producto").value;
+            const descripcion = document.getElementById("descripcion-producto").value || "";
+
+            try {
+                const respuesta = await fetch(`${API_URL}/productos`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        codigo_barras: codigoBarras,
+                        nombre: nombre,
+                        descripcion: descripcion
+                    })
+                });
+
+                const resultado = await respuesta.json();
+
+                if (respuesta.ok) {
+                    alert(resultado.mensaje || "Producto agregado correctamente.");
+                    document.getElementById("producto-form").reset();
+                    cargarInventario();
+                } else {
+                    alert("Error del servidor: " + (resultado.detail || "No se pudo agregar el producto."));
+                }
+
+            } catch (err) {
+                console.error("Error de red:", err);
+                alert("No se pudo conectar con la API. Verifica que el backend esté corriendo.");
+            }
+        }
+
+        // Registrar entrada de productos
+        async function registrarMovimiento(event) {
+            event.preventDefault();
+
+            const idProducto = document.getElementById("prod-id").value;
+            const cantidad = document.getElementById("cantidad").value;
+            const observaciones = document.getElementById("obs").value || "Entrada desde panel web";
+
+            try {
+                const respuesta = await fetch(`${API_URL}/movimientos`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id_producto: parseInt(idProducto),
+                        tipo_movimiento: "ENTRADA",
+                        cantidad: parseInt(cantidad),
+                        observaciones: observaciones
+                    })
+                });
+
+                const resultado = await respuesta.json();
+
+                if (respuesta.ok) {
+                    alert(resultado.mensaje || "Entrada registrada correctamente.");
+                    document.getElementById("movimiento-form").reset();
+                    setTimeout(cargarInventario, 800);
+                } else {
+                    alert("Error del servidor: " + (resultado.detail || "No se pudo aplicar el cambio."));
+                }
+
+            } catch (err) {
+                console.error("Error de red:", err);
+                alert("No se pudo conectar con la API. Verifica que el backend esté corriendo.");
+            }
+        }
+
+        // Ver movimientos registrados
+        async function cargarMovimientos() {
+            try {
+                const respuesta = await fetch(`${API_URL}/movimientos`);
+                const movimientos = await respuesta.json();
+
+                const tbody = document.querySelector("#tabla-movimientos tbody");
+                tbody.innerHTML = "";
+
+                movimientos.forEach(mov => {
+                    const fila = document.createElement("tr");
+
+                    fila.innerHTML = `
+                        <td>${mov.id_movimiento}</td>
+                        <td>${mov.id_producto}</td>
+                        <td><span class="badge">${mov.tipo_movimiento}</span></td>
+                        <td>${mov.cantidad}</td>
+                        <td>${mov.fecha_movimiento}</td>
+                        <td>${mov.observaciones || ""}</td>
+                    `;
+
+                    tbody.appendChild(fila);
+                });
+
+            } catch (err) {
+                console.error("Error al cargar movimientos:", err);
+                alert("No se pudieron cargar los movimientos.");
+            }
+        }
+
+        // Registrar inventario físico
+        async function registrarInventario(event) {
+            event.preventDefault();
+
+            const idProducto = document.getElementById("inv-prod-id").value;
+            const cantidadFisica = document.getElementById("cantidad-fisica").value;
+            const responsable = document.getElementById("responsable").value;
+
+            try {
+                const respuesta = await fetch(`${API_URL}/inventario`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id_producto: parseInt(idProducto),
+                        cantidad_fisica: parseInt(cantidadFisica),
+                        responsable: responsable
+                    })
+                });
+
+                const resultado = await respuesta.json();
+
+                if (respuesta.ok) {
+                    alert(resultado.mensaje || "Inventario registrado correctamente.");
+                    document.getElementById("inventario-form").reset();
+                } else {
+                    alert("Error del servidor: " + (resultado.detail || "No se pudo registrar el inventario."));
+                }
+
+            } catch (err) {
+                console.error("Error de red:", err);
+                alert("No se pudo conectar con la API. Verifica que exista el endpoint /inventario.");
+            }
+        }
+
+        async function cargarInventarios() {
+            try {
+                const respuesta = await fetch(`${API_URL}/inventarios`);
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "No se pudieron cargar los inventarios.");
+                }
+
+                const inventarios = await respuesta.json();
+
+                const tbody = document.querySelector("#tabla-inventarios tbody");
+                tbody.innerHTML = "";
+
+                inventarios.forEach(inv => {
+                    const fila = document.createElement("tr");
+
+                    fila.innerHTML = `
+                        <td>${inv.id_inventario}</td>
+                        <td>${inv.fecha_auditoria}</td>
+                        <td>${inv.responsable}</td>
+                        <td>${inv.id_producto}</td>
+                        <td>${inv.nombre_producto}</td>
+                        <td><span class="badge">${inv.cantidad_fisica} u.</span></td>
+                    `;
+
+                    tbody.appendChild(fila);
+                });
+
+            } catch (err) {
+                console.error("Error al cargar inventarios:", err);
+                alert("No se pudieron cargar los inventarios: " + err.message);
+            }
+        }
+
+        async function registrarUsuario(event) {
+    event.preventDefault();
+
+    const username = document.getElementById("nuevo-username").value;
+    const email = document.getElementById("nuevo-email").value;
+    const password = document.getElementById("nuevo-password").value;
+    const rol = document.getElementById("nuevo-rol").value;
+
+    try {
+        const respuesta = await fetch(`${API_URL}/registro`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: username,
+                email: email,
+                password: password,
+                rol: rol
+            })
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok) {
+            alert(resultado.mensaje || "Usuario creado correctamente.");
+            document.getElementById("usuario-form").reset();
+            cargarUsuarios();
+        } else {
+            alert("Error del servidor: " + (resultado.detail || "No se pudo crear el usuario."));
+        }
+
+    } catch (err) {
+        console.error("Error al registrar usuario:", err);
+        alert("No se pudo conectar con la API. Verifica que el backend esté corriendo.");
+    }
+}
+
+
+async function cargarUsuarios() {
+    try {
+        const respuesta = await fetch(`${API_URL}/usuarios`);
+
+        if (!respuesta.ok) {
+            const error = await respuesta.json();
+            throw new Error(error.detail || "No se pudieron cargar los usuarios.");
+        }
+
+        const usuarios = await respuesta.json();
+
+        const tbody = document.querySelector("#tabla-usuarios tbody");
+        tbody.innerHTML = "";
+
+        usuarios.forEach(user => {
+            const fila = document.createElement("tr");
+
+            fila.innerHTML = `
+                <td>${user.id_usuario}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td><span class="badge">${user.rol}</span></td>
+                <td>${user.activo ? "Sí" : "No"}</td>
+                <td>${user.fecha_creacion || ""}</td>
+                <td>${user.ultimo_acceso || "Sin acceso"}</td>
+                <td>
+                    ${
+                        user.activo
+                        ? `<button class="logout-btn" onclick="eliminarUsuario(${user.id_usuario}, '${user.username}')">Eliminar</button>`
+                        : `<span style="color:#a8a8b3;">Eliminado</span>`
+                    }
+                </td>
+            `;
+
+            tbody.appendChild(fila);
+        });
+
+    } catch (err) {
+        console.error("Error al cargar usuarios:", err);
+        alert("No se pudieron cargar los usuarios: " + err.message);
+    }
+}
+
+        async function eliminarUsuario(idUsuario, username) {
+    const confirmar = confirm(`¿Seguro que deseas eliminar al usuario '${username}'?`);
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/usuarios/${idUsuario}`, {
+            method: "DELETE"
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok) {
+            alert(resultado.mensaje || "Usuario eliminado correctamente.");
+            cargarUsuarios();
+        } else {
+            alert("Error del servidor: " + (resultado.detail || "No se pudo eliminar el usuario."));
+        }
+
+    } catch (err) {
+        console.error("Error al eliminar usuario:", err);
+        alert("No se pudo conectar con la API. Verifica que el backend esté corriendo.");
+    }
+}
+
+        function cerrarSesion() {
+            localStorage.removeItem("sesion_usuario");
+            localStorage.removeItem("sesion_rol");
+            window.location.href = "login.html";
+        }
+
+        // Ejecutar la carga automática al abrir la pantalla
+        aplicarPermisosPorRol();
+        cargarInventario();
+    </script>
+</body>
+</html>
