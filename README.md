@@ -28,19 +28,19 @@ Sistema web de inventarios desarrollado con FastAPI, PostgreSQL, ActiveMQ y fron
 
 <img width="630" height="480" alt="image" src="https://github.com/user-attachments/assets/5a7db95a-3fe3-4cbd-8c81-f3ae9cea68e5" />
 
--entidad relacion 
+-Entidad relacion 
 
 <img width="532" height="451" alt="image" src="https://github.com/user-attachments/assets/a0f0c437-ac90-43d4-8861-9492ad880a6c" />
 
--sistema de inventario
+-Sistema de inventario
 
 <img width="781" height="562" alt="image" src="https://github.com/user-attachments/assets/220fe85a-3655-4be5-9c75-618ebcb599b0" />
 
--diagrama de despliegue 
+-Diagrama de despliegue 
 
 <img width="548" height="427" alt="image" src="https://github.com/user-attachments/assets/a0466cfc-d2a0-4d30-9e0d-160bbb0d7f1c" />
 
--diccionario de base de datos 
+-Diccionario de base de datos 
 
 <img width="761" height="689" alt="image" src="https://github.com/user-attachments/assets/732e0b98-bc8b-4531-ba10-e9699343a8b7" />
 
