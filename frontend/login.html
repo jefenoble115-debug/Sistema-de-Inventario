@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Inventarios - Login</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e24; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background-color: #2a2a35; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 300px; text-align: center; }
+        h2 { margin-bottom: 25px; color: #4caf50; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; background-color: #3b3b4f; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #4caf50; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        button:hover { background-color: #45a049; }
+        .error { color: #ff5252; margin-top: 15px; font-size: 14px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h2>Iniciar Sesión</h2>
+        <form id="loginForm" onsubmit="ejecutarLogin(event)">
+            <input type="text" id="username" placeholder="Usuario" required>
+            <input type="password" id="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
+        <div id="error-msg" class="error"></div>
+    </div>
+
+    <script>
+        async function ejecutarLogin(event) {
+            // Evita que la página se recargue al enviar el formulario
+            event.preventDefault(); 
+
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+            const errorDiv = document.getElementById("error-msg");
+            
+            errorDiv.style.display = "none";
+
+            try {
+                const respuesta = await fetch("http://127.0.0.1:8000/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ usuario: user, password: pass })
+                });
+
+                const resultado = await respuesta.json();
+
+                if (respuesta.ok && resultado.exito) {
+                    // Guardar sesión en el navegador y redirigir
+                    localStorage.setItem("sesion_usuario", resultado.usuario);
+                    localStorage.setItem("sesion_rol", resultado.rol);
+                    window.location.href = "inventario.html";
+                } else {
+                    // Si el backend envió un mensaje en 'detail' (error de FastAPI), lo mostramos
+                    errorDiv.innerText = resultado.detail || "Usuario o contraseña incorrectos.";
+                    errorDiv.style.display = "block";
+                }
+            } catch (err) {
+                // Captura el error si la API de FastAPI está apagada
+                errorDiv.innerText = "No se pudo conectar con el servidor API. Verifica que esté encendido.";
+                errorDiv.style.display = "block";
+            }
+        }
+    </script>
+</body>
+</html>
